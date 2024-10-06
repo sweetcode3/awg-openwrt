@@ -16,7 +16,7 @@ jobs:
             pkgarch: arm_cortex-a7_neon-vfpv4
             target: sunxi
             subtarget: cortexa7
-            vermagic: "dd9f0e3ca1f0261f1463609f168808d2"
+            vermagic: "2a1dc388b07260a9b68c352de6e06505"
     steps:
       - uses: actions/checkout@v4
         with:
