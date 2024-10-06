@@ -12,11 +12,11 @@ jobs:
     strategy:
       matrix:
         build_env:
-          - tag: "18.06"
-            pkgarch: mips_siflower
-            target: siflower
-            subtarget: siflower_sf19a28_fullmask
-            vermagic: "9c242f353867f49a96054ff8c9f2c460"
+          - tag: "23.05.4"
+            pkgarch: arm_cortex-a7_neon-vfpv4
+            target: sunxi
+            subtarget: cortexa7
+            vermagic: "dd9f0e3ca1f0261f1463609f168808d2"
     steps:
       - uses: actions/checkout@v4
         with:
