@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      TAG: "18.06"
+      TAG: "18.06.0"
       PKGARCH: "mips_siflower"
       TARGET: "siflower"
       SUBTARGET: "sf19a28"
