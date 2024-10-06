@@ -1,5 +1,5 @@
 name: Create Release on Tag
-# on: [workflow_dispatch]
+
 on:
   push:
     tags:
@@ -7,22 +7,21 @@ on:
 
 jobs:
   build:
-    name: "v${{ matrix.build_env.tag }} - ${{ matrix.build_env.pkgarch}} :: ${{ matrix.build_env.target}}/${{ matrix.build_env.subtarget}} build"
+    name: "v18.06 - mips_siflower :: siflower/sf19a28 build"
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        build_env:
-          - tag: "23.05.4"
-            pkgarch: arm_cortex-a7_neon-vfpv4
-            target: sunxi
-            subtarget: cortexa7
-            vermagic: "2a1dc388b07260a9b68c352de6e06505"
+
+    env:
+      TAG: "18.06"
+      PKGARCH: "mips_siflower"
+      TARGET: "siflower"
+      SUBTARGET: "sf19a28"
+      VERMAGIC: "4.14.90"
 
     steps:
       - uses: actions/checkout@v4
         with:
           repository: openwrt/openwrt
-          ref: v${{ matrix.build_env.tag }}
+          ref: v18.06
           fetch-depth: 0
 
       - name: Cache Tools and Kernel
@@ -30,20 +29,19 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build_dir
-          key: ${{ runner.os }}-build-vm4-${{ matrix.build_env.tag }}-${{ matrix.build_env.pkgarch}}-${{ matrix.build_env.target}}-${{ matrix.build_env.subtarget}}
+          key: ${{ runner.os }}-build-vm4-18.06-mips_siflower-siflower-sf19a28
           restore-keys: |
-            ${{ runner.os }}-build-vm4-cache-tools-kernel-${{ matrix.build_env.tag }}-${{ matrix.build_env.pkgarch}}-
+            ${{ runner.os }}-build-vm4-cache-tools-kernel-18.06-mips_siflower-
 
       - name: Building kernel and tools
-        #if: ${{ steps.cache-tools-kernel.outputs.cache-hit != 'true' }}
         run: |
-          echo "pkgarch: ${{ matrix.build_env.pkgarch}}, target: ${{ matrix.build_env.target }}, subtarget: ${{ matrix.build_env.subtarget }}"
+          echo "pkgarch: ${{ env.PKGARCH }}, target: ${{ env.TARGET }}, subtarget: ${{ env.SUBTARGET }}"
           # Setup & install feeds
-          wget https://downloads.openwrt.org/releases/${{ matrix.build_env.tag }}/targets/${{ matrix.build_env.target}}/${{ matrix.build_env.subtarget}}/feeds.buildinfo -O feeds.conf
+          wget https://downloads.openwrt.org/releases/${{ env.TAG }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/feeds.buildinfo -O feeds.conf
           echo "src-git awgopenwrt https://github.com/yury-sannikov/awg-openwrt.git" >> ./feeds.conf
           ./scripts/feeds update && ./scripts/feeds install -a
           # Setup config with AWG and dependencies
-          wget https://downloads.openwrt.org/releases/${{ matrix.build_env.tag }}/targets/${{ matrix.build_env.target}}/${{ matrix.build_env.subtarget}}/config.buildinfo -O .config
+          wget https://downloads.openwrt.org/releases/${{ env.TAG }}/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/config.buildinfo -O .config
           echo "CONFIG_PACKAGE_kmod-amneziawg=m" >> .config
           echo "CONFIG_PACKAGE_amneziawg-tools=y" >> .config
           echo "CONFIG_PACKAGE_luci-app-amneziawg=y" >> .config
@@ -60,20 +58,18 @@ jobs:
           # Compile kernel module
           echo "    > make target/linux/compile"
           make target/linux/compile -i -j `nproc` V=s
-          VERMAGIC=`cat ./build_dir/target-*/linux-*/linux-*/.vermagic`
-          VERMAGIC_EXPECTED=${{ matrix.build_env.vermagic }}
-          if [ "$VERMAGIC" != "$VERMAGIC_EXPECTED" ]; then
-            echo Vermagic mismatch: $VERMAGIC, expected $VERMAGIC_EXPECTED
+          VERMAGIC_ACTUAL=`cat ./build_dir/target-*/linux-*/linux-*/.vermagic`
+          if [ "$VERMAGIC_ACTUAL" != "${{ env.VERMAGIC }}" ]; then
+            echo Vermagic mismatch: $VERMAGIC_ACTUAL, expected ${{ env.VERMAGIC }}
             exit 1
           fi
 
       - name: Build AmneziaWG
         run: |
-          VERMAGIC=`cat ./build_dir/target-*/linux-*/linux-*/.vermagic`
-          echo "Vermagic: $VERMAGIC"
-          VERMAGIC_EXPECTED=${{ matrix.build_env.vermagic }}
-          if [ "$VERMAGIC" != "$VERMAGIC_EXPECTED" ]; then
-            echo Vermagic mismatch: $VERMAGIC, expected $VERMAGIC_EXPECTED
+          VERMAGIC_ACTUAL=`cat ./build_dir/target-*/linux-*/linux-*/.vermagic`
+          echo "Vermagic: $VERMAGIC_ACTUAL"
+          if [ "$VERMAGIC_ACTUAL" != "${{ env.VERMAGIC }}" ]; then
+            echo Vermagic mismatch: $VERMAGIC_ACTUAL, expected ${{ env.VERMAGIC }}
             exit 1
           fi
           # Ignore kmod build for some targets, replace with the awg-go
@@ -88,10 +84,10 @@ jobs:
         run: |
           tag_name=${{ github.ref_name }}
           mkdir -p awgrelease
-          postfix="${tag_name}_v${{ matrix.build_env.tag }}_${{ matrix.build_env.pkgarch}}_${{ matrix.build_env.target}}_${{ matrix.build_env.subtarget}}"
-          cp bin/packages/${{ matrix.build_env.pkgarch }}/awgopenwrt/amneziawg-tools_*.ipk awgrelease/amneziawg-tools_${postfix}.ipk
-          cp bin/packages/${{ matrix.build_env.pkgarch }}/awgopenwrt/luci-app-amneziawg_*.ipk awgrelease/luci-app-amneziawg_${postfix}.ipk
-          cp bin/targets/${{ matrix.build_env.target}}/${{ matrix.build_env.subtarget}}/packages/kmod-amneziawg_*.ipk awgrelease/kmod-amneziawg_${postfix}.ipk
+          postfix="${tag_name}_v${{ env.TAG }}_${{ env.PKGARCH }}_${{ env.TARGET }}_${{ env.SUBTARGET }}"
+          cp bin/packages/${{ env.PKGARCH }}/awgopenwrt/amneziawg-tools_*.ipk awgrelease/amneziawg-tools_${postfix}.ipk
+          cp bin/packages/${{ env.PKGARCH }}/awgopenwrt/luci-app-amneziawg_*.ipk awgrelease/luci-app-amneziawg_${postfix}.ipk
+          cp bin/targets/${{ env.TARGET }}/${{ env.SUBTARGET }}/packages/kmod-amneziawg_*.ipk awgrelease/kmod-amneziawg_${postfix}.ipk
 
       - name: Release
         uses: softprops/action-gh-release@v1
